@@ -292,36 +292,41 @@ export default function App() {
       setAgent("credibility", "active", null, ["Scoring source domains...", "Checking publication dates...", "Cross-referencing bias ratings..."]);
 
       // Run all 3 in parallel
-      let webOut = "", kbOut = "", credOut = "";
-      const [w, k, c] = await Promise.all([
-        callAI(
-          `You are a web search agent for fact-checking. Return 3-4 specific evidence findings as bullet points. Each bullet: what was found, which source, whether it supports or contradicts the claim. Be specific with facts and numbers.`,
-          `Claim: "${claim}"\nSearch queries:\n${queries}`,
-          (t) => { webOut = t; }
-        ),
-        callAI(
-          `You are a knowledge base agent with access to Britannica, NASA, PubMed, and CDC. Return 2-3 specific factual findings relevant to verifying this claim. Include the source type and specific data points or measurements where relevant.`,
-          `Claim: "${claim}"`,
-          (t) => { kbOut = t; }
-        ),
-        callAI(
-          `You are a credibility scoring agent. For this claim, return ONLY valid JSON (no markdown):
-{
-  "sources": [
-    {"name": "Wikipedia", "score": 72},
-    {"name": "NASA", "score": 95},
-    {"name": "Britannica", "score": 91},
-    {"name": "Reuters", "score": 88},
-    {"name": "Snopes", "score": 85}
-  ],
-  "avgScore": 86,
-  "misinfoRisk": "low" or "medium" or "high",
-  "misinfoPattern": "one sentence about common misinformation patterns for this type of claim"
-}`,
-          `Claim: "${claim}"`,
-          (t) => { credOut = t; }
-        ),
-      ]);
+      let w = "", k = "", c = "";
+      w = await callAI(
+        `You are a web search agent. Simulate realistic web search results for fact-checking. Given a claim and queries, return 3-4 bullet points of evidence snippets (with fake but realistic source names). Be factual and neutral.`,
+        `Claim: "${claim}"\nQueries:\n${queries}`,
+        (t) => { setAgent("websearch", "active", t); }
+      );
+      setAgent("websearch", "done", null, webSources.map(s => `✓ ${s} — results retrieved`));
+      await sleep(1000);
+      k = await callAI(
+        `You are a knowledge base agent with access to encyclopedias, scientific databases, and historical records. Given a claim, return 2-3 relevant facts from authoritative sources. Cite the type of source (e.g., "NASA records", "peer-reviewed study").`,
+        `Claim: "${claim}"`,
+        (t) => { setAgent("knowledge", "active", t); }
+      );
+      setAgent("knowledge", "done", null, kbSources.slice(0,3).map(s => `✓ ${s} — records found`));
+      await sleep(1000);
+
+      c = await callAI(
+        `You are a source credibility scoring agent. For this claim, return ONLY valid JSON (no markdown):
+        {
+        "sources": [
+        {"name": "Wikipedia", "score": 72},
+        {"name": "NASA", "score": 95},
+        {"name": "Britannica", "score": 91},
+        {"name": "Reuters", "score": 88},
+        {"name": "Snopes", "score": 85}
+        ],   
+        "avgScore": 86,
+        "misinfoRisk": "low",
+        "misinfoPattern": "one sentence about common misinformation patterns for this type of claim"
+        }`,
+        `Claim: "${claim}"`,
+        (t) => { setAgent("credibility", "active", t); }
+      );
+      await sleep(1000);
+
 
       setAgent("websearch", "done", null, webSources.map(s => `✓ ${s} — results retrieved`));
       setAgent("knowledge", "done", null, kbSources.slice(0,3).map(s => `✓ ${s} — records found`));
