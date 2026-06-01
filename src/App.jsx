@@ -72,26 +72,10 @@ async function callAI(system, userMsg, onStream) {
       stream: true,
     }),
   });
-  let full = "";
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value);
-    for (const line of chunk.split("\n")) {
-      if (line.startsWith("data: ")) {
-        try {
-          const json = JSON.parse(line.slice(6));
-          if (json.type === "content_block_delta" && json.delta?.text) {
-            full += json.delta.text;
-            onStream?.(full);
-          }
-        } catch {}
-      }
-    }
-  }
-  return full;
+  const data = await response.json();
+  const text = data.text || "";
+  onStream?.(text);
+  return text;
 }
 
 function SourceBadge({ source, score }) {
