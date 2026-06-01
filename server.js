@@ -55,6 +55,10 @@ app.post("/api/messages", async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
+app.get("/", (req, res) => {
+  res.send("Fact Checker API is running!");
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
