@@ -41,6 +41,25 @@ const AGENTS = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+function parseJSON(raw) {
+  try {
+    // strip markdown code fences, leading/trailing whitespace
+    let clean = raw
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    // find the first { and last } to extract just the JSON object
+    const start = clean.indexOf("{");
+    const end = clean.lastIndexOf("}");
+    if (start !== -1 && end !== -1) {
+      clean = clean.slice(start, end + 1);
+    }
+    return JSON.parse(clean);
+  } catch {
+    return null;
+  }
+}
+
 async function callAI(system, userMsg, onStream) {
   const response = await fetch("/api/messages", {
     method: "POST",
@@ -326,7 +345,7 @@ export default function App() {
       let credData = null;
       try {
         const clean = c.replace(/```json|```/g, "").trim();
-        credData = JSON.parse(clean);
+        credData = parseJSON(c);;
         setAgent("credibility", "done", null, [
           `Avg credibility score: ${credData.avgScore}%`,
           `Misinformation risk: ${credData.misinfoRisk.toUpperCase()}`,
@@ -365,7 +384,7 @@ Include 3-5 evidence items total, mix of supporting and contradicting where appl
       let aggData = null;
       try {
         const clean = aggOut.replace(/```json|```/g, "").trim();
-        aggData = JSON.parse(clean);
+        aggData = parseJSON(aggOut);
         setAgent("aggregator", "done", null, [
           `${aggData.evidence?.length || 0} evidence items ranked`,
           `${aggData.supporting || 0} supporting, ${aggData.contradicting || 0} contradicting`,
@@ -398,7 +417,7 @@ Include 3-5 evidence items total, mix of supporting and contradicting where appl
       let parsedVerdict = null;
       try {
         const clean = verdictRaw.replace(/```json|```/g, "").trim();
-        parsedVerdict = JSON.parse(clean);
+        parsedVerdict = parseJSON(verdictRaw);
         parsedVerdict._credData = credData;
         parsedVerdict._aggData = aggData;
         setVerdict(parsedVerdict);
