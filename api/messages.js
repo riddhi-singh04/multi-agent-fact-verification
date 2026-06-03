@@ -1,10 +1,22 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
- 
-  const { system, userMsg } = req.body;
- 
+
+  let body = req.body;
+
+  // Parse body if it's a string
+  if (typeof body === "string") {
+    try { body = JSON.parse(body); } catch { body = {}; }
+  }
+
+  const system = body?.system || "";
+  const userMsg = body?.userMsg || "";
+
+  if (!userMsg) {
+    return res.status(400).json({ error: "missing userMsg", text: "" });
+  }
+
   const makeRequest = async () => {
-    const response = await fetch(
+    return fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
@@ -16,36 +28,33 @@ export default async function handler(req, res) {
         }),
       }
     );
-    return response;
   };
- 
+
   try {
     let response = await makeRequest();
- 
-    // If rate limited, wait 3 seconds and retry once
+
     if (response.status === 429) {
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, 4000));
       response = await makeRequest();
     }
- 
-    // If still rate limited, wait 6 more seconds and retry
+
     if (response.status === 429) {
-      await new Promise(r => setTimeout(r, 6000));
+      await new Promise(r => setTimeout(r, 8000));
       response = await makeRequest();
     }
- 
+
     const data = await response.json();
- 
+
     if (!response.ok) {
       console.error("Gemini error:", JSON.stringify(data));
-      return res.status(500).json({ error: data.error?.message || "Gemini error", text: "" });
+      return res.status(500).json({ error: data.error?.message, text: "" });
     }
- 
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    res.status(200).json({ text });
- 
+    return res.status(200).json({ text });
+
   } catch (err) {
-    console.error("Handler error:", err.message);
-    res.status(500).json({ error: err.message, text: "" });
+    console.error("Error:", err.message);
+    return res.status(500).json({ error: err.message, text: "" });
   }
 }
