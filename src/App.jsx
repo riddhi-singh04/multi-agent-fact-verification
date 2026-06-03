@@ -31,6 +31,7 @@ async function callAI(system, userMsg) {
 }
 
 function parseJSON(raw) {
+  console.log("RAW:", raw);
   try {
     let s = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const a = s.indexOf("{"), b = s.lastIndexOf("}");
